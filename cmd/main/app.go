@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,6 +10,8 @@ import (
 	"path/filepath"
 	"techpoint/internal/config"
 	"techpoint/internal/user"
+	"techpoint/internal/user/db"
+	"techpoint/pkg/client/mongodb"
 	"techpoint/pkg/logging"
 	"time"
 
@@ -21,6 +24,25 @@ func main() {
 	router := httprouter.New()
 
 	cfg := config.GetConfig()
+	cfgMongo := cfg.MongoDB
+
+	mongoDBClient, err := mongodb.NewClient(context.Background(), cfgMongo.Host, cfgMongo.Port, cfgMongo.Username,
+		cfgMongo.Password, cfgMongo.Database, cfgMongo.AuthDB)
+	if err != nil {
+		panic(err)
+	}
+	storage := db.NewStorage(mongoDBClient, cfg.MongoDB.Collection, logger)
+	user1 := user.User{
+		ID:           "",
+		Email:        "pearl@gmail.com",
+		Username:     "pearl",
+		PasswordHash: "12345",
+	}
+	userID1, err := storage.Create(context.Background(), user1)
+	if err != nil {
+		panic(err)
+	}
+	logger.Info(userID1)
 
 	logger.Info("register user handler")
 	handler := user.NewHandler()
